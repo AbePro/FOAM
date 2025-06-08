@@ -1,10 +1,11 @@
 import AppSnackbar from '@/componets/AppSnackbar';
-import { NotesForm } from '@/componets/NotesForm';
+import CustomersForm from '@/componets/CustomersForm';
+import NotesForm from '@/componets/NotesForm';
 import { useLocalSearchParams } from 'expo-router';
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ScrollView, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Avatar, Button, Card, Divider, IconButton, MD2Colors, MD3Colors, Portal, Text } from 'react-native-paper';
+import { ActivityIndicator, Avatar, Button, Card, Divider, IconButton, MD2Colors, MD3Colors, Text } from 'react-native-paper';
 import { db } from '../../lib/firebase';
 import { createItem, deleteItem, updateItem } from '../../lib/firstoreFunctions';
 import { handleCall, handleEmail, handleWhatsApp } from '../../lib/linkingHelpers';
@@ -18,6 +19,8 @@ const CustomerDeatils = ({ }) => {
     const [expanded, setExpanded] = useState(false);
     const [selectedNote, setSelectedNote] = useState<any>(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [editCustomerModalVisible, setEditCustomerModalVisible] = useState(false);
+
     const [snackbarVisible, setSnackbarVisible] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const showSnackbar = (message: string) => {
@@ -124,6 +127,12 @@ const CustomerDeatils = ({ }) => {
                     <Text className="text-xl font-bold mb-2">{customer.name}</Text>
                     <Text className="text-gray-500 mb-4">{customer.phone}</Text>
                     <Text className="text-gray-500 mb-4">{customer.email}</Text>
+                    <IconButton
+                        icon="pencil"
+                        size={24}
+                        onPress={() => setEditCustomerModalVisible(true)}
+                    />
+
                 </Card.Content>
             </Card>
 
@@ -229,44 +238,13 @@ const CustomerDeatils = ({ }) => {
                     </Card.Content>
                 </Card>
             </View>
-            <Portal>
-                <Modal
-                    visible={modalVisible}
-                    onDismiss={() => setModalVisible(false)}
-                    contentContainerStyle={{
-                        backgroundColor: 'white',
-                        padding: 20,
-                        margin: 20,
-                        borderRadius: 10,
-                    }}
-                >
-                    {selectedNote && (
-                        <>
-                            <Text className="text-lg font-semibold mb-2">Note</Text>
-                            <Text className="mb-4">{selectedNote.text}</Text>
-                            <Button
-                                icon="pencil"
-                                mode="contained"
-                                onPress={() => {
-                                    setEditNoteText(selectedNote.text);
-                                    setEditNoteModalVisible(true);
-                                }}
-                            >
-                                Edit
-                            </Button>
-                        </>
-                    )}
-                </Modal>
-            </Portal>
-
-
-
-
-
-
+            {/* Add Note Form */}
             <NotesForm
+                visible={newNoteModalVisible}
+                onDismiss={() => setNewNoteModalVisible(false)}
                 submitLabel="Add Note"
-                onSubmit={async (data) => {
+                type="create"
+                onSubmit={async (data: { text: string }) => {
                     if (data.text.trim() && id) {
                         await createItem('customers', { text: data.text }, id as string, 'notes');
                         showSnackbar('Note added');
@@ -276,13 +254,14 @@ const CustomerDeatils = ({ }) => {
                 }}
             />
 
-
-
-
+            {/* Edit Note Form */}
             <NotesForm
+                visible={editNoteModalVisible}
+                onDismiss={() => setEditNoteModalVisible(false)}
                 submitLabel="Save Changes"
                 defaultValues={{ text: selectedNote?.text || '' }}
-                onSubmit={async (data) => {
+                type="update"
+                onSubmit={async (data: { text: string }) => {
                     if (data.text.trim() && id && selectedNote) {
                         try {
                             await updateItem(
@@ -302,6 +281,23 @@ const CustomerDeatils = ({ }) => {
                     }
                 }}
             />
+
+            <CustomersForm
+                visible={editCustomerModalVisible}
+                onDismiss={() => setEditCustomerModalVisible(false)}
+                submitLabel="Save Changes"
+                type="update"
+                defaultValues={customer}
+                onSubmit={async (data) => {
+                    if (data.name.trim() && customer?.id) {
+                        await updateItem('customers', customer.id, data);
+                        setEditCustomerModalVisible(false);
+                        showSnackbar('Customer updated');
+                    }
+                }}
+            />
+
+
 
 
 

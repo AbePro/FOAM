@@ -1,5 +1,6 @@
 // app/customers/index.tsx
 
+import CustomersForm from '@/componets/CustomersForm';
 import { Link } from 'expo-router';
 import { collection, onSnapshot } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
@@ -7,6 +8,7 @@ import { FlatList, View } from 'react-native';
 import { Avatar, Button, Card, Divider, FAB, IconButton, Portal, Text } from 'react-native-paper';
 import { twMerge } from 'tailwind-merge';
 import { db } from '../lib/firebase'; // adjust path if needed
+import { createItem, uploadImageAndGetUrl } from '../lib/firstoreFunctions';
 import { handleCall, handleEmail, handleWhatsApp } from '../lib/linkingHelpers';
 
 
@@ -153,6 +155,42 @@ export default function CustomersScreen() {
           }}
         />
       </Portal>
+
+      <CustomersForm
+        visible={newCustomerModalVisible}
+        onDismiss={() => setNewCustomerModalVisible(false)}
+        submitLabel="Add Customer"
+        type="create"
+        onSubmit={async (data) => {
+          try {
+            let imageUrl = '';
+
+            // If data.image exists, upload it to Firebase Storage
+            if (data.image) {
+              imageUrl = await uploadImageAndGetUrl(data.image, 'customer_images');
+            }
+
+            const dataToSave = {
+              ...data,
+              image: imageUrl || null,
+            };
+
+            if (dataToSave.name.trim()) {
+              await createItem('customers', dataToSave);
+              showSnackbar('Customer added');
+              setNewCustomerModalVisible(false);
+              // onSnapshot handles refreshing the customer list!
+            }
+          } catch (error) {
+            console.error('Error adding customer:', error);
+            alert('Failed to add customer. Please try again.');
+          }
+        }}
+      />
+
+
+
+
 
 
 

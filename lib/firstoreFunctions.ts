@@ -1,5 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
+
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from './firebase';
 
 export const deleteItem = async (
     collectionName: string,
@@ -85,5 +87,33 @@ export const updateItem = async (
         console.log('Item updated successfully');
     } catch (error) {
         console.error('Error updating item:', error);
+    }
+};
+
+
+
+import uuid from 'react-native-uuid';
+
+/**
+ * Uploads an image to Firebase Storage and returns its download URL.
+ * @param uri - The local URI of the image.
+ * @param folderName - The folder in Firebase Storage (e.g. 'customer_images').
+ * @returns The download URL of the uploaded image.
+ */
+export const uploadImageAndGetUrl = async (uri: string, folderName: string = 'uploads') => {
+    try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+
+        const fileName = `${folderName}/${uuid.v4()}.jpg`;
+        const storageRef = ref(storage, fileName);
+
+        await uploadBytes(storageRef, blob);
+
+        const downloadUrl = await getDownloadURL(storageRef);
+        return downloadUrl;
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        throw error;
     }
 };
