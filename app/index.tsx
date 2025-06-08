@@ -1,6 +1,7 @@
 // app/customers/index.tsx
 
 import CustomersForm from '@/componets/CustomersForm';
+import Constants from 'expo-constants';
 import { Link } from 'expo-router';
 import { collection, onSnapshot } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
@@ -8,8 +9,11 @@ import { FlatList, View } from 'react-native';
 import { Avatar, Button, Card, Divider, FAB, IconButton, Portal, Text } from 'react-native-paper';
 import { twMerge } from 'tailwind-merge';
 import { db } from '../lib/firebase'; // adjust path if needed
-import { createItem, uploadImageAndGetUrl } from '../lib/firstoreFunctions';
+import { createItem } from '../lib/firstoreFunctions';
 import { handleCall, handleEmail, handleWhatsApp } from '../lib/linkingHelpers';
+const { cloudinaryUploadPreset, cloudinaryCloudName } = Constants.expoConfig?.extra || {};
+
+
 
 
 
@@ -164,10 +168,35 @@ export default function CustomersScreen() {
         onSubmit={async (data) => {
           try {
             let imageUrl = '';
+            console.log(data)
 
-            // If data.image exists, upload it to Firebase Storage
+            console.log('Image from form:', data.image);
+            console.log('cloudinaryUploadPreset is: ', cloudinaryUploadPreset)
+            console.log("and cloudinaryCloudName is ", cloudinaryCloudName)
+
+            // If data.image exists, upload it to Cloudinary
             if (data.image) {
-              imageUrl = await uploadImageAndGetUrl(data.image, 'customer_images');
+              const formData = new FormData();
+              formData.append('file', {
+                uri: data.image,
+                type: 'image/jpeg', // Adjust type as needed
+                name: 'customer_image.jpg',
+              });
+              formData.append('upload_preset', cloudinaryUploadPreset);
+
+
+              const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/image/upload`, {
+                method: 'POST',
+                body: formData,
+              });
+
+              const result = await response.json();
+
+              if (result.secure_url) {
+                imageUrl = result.secure_url;
+              } else {
+                throw new Error('Image upload failed.');
+              }
             }
 
             const dataToSave = {
@@ -183,14 +212,15 @@ export default function CustomersScreen() {
             }
           } catch (error) {
             console.error('Error adding customer:', error);
+            console.log(error)
             alert('Failed to add customer. Please try again.');
+
           }
         }}
+
+
+
       />
-
-
-
-
 
 
 

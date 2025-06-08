@@ -32,7 +32,7 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
     submitLabel = 'Save Customer',
     type = 'create',
 }) => {
-    const { control, handleSubmit, reset, watch } = useForm({
+    const { control, handleSubmit, reset, watch, setValue } = useForm({
         defaultValues,
     });
 
@@ -45,6 +45,8 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
         reset();
         onDismiss();
     };
+
+    const [imageUri, setImageUri] = useState<string | null>(null);
 
     const handleImageUpload = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -66,6 +68,7 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
                         });
                         if (!cameraResult.canceled && cameraResult.assets.length > 0) {
                             setImageUri(cameraResult.assets[0].uri);
+                            setValue('image', cameraResult.assets[0].uri);
                         }
                     },
                 },
@@ -78,6 +81,8 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
                         });
                         if (!galleryResult.canceled && galleryResult.assets.length > 0) {
                             setImageUri(galleryResult.assets[0].uri);
+                            setValue('image', galleryResult.assets[0].uri);
+                            console.log(imageUri)
                         }
                     },
                 },
@@ -87,7 +92,7 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
         );
     };
 
-    const [imageUri, setImageUri] = useState<string | null>(null);
+
 
 
     const handleRemindMe = () => {
@@ -235,7 +240,7 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
                                 )}
 
 
-                                {/* Phone */}
+                                {/* Notes */}
                                 <Controller
                                     control={control}
                                     name="notes"
@@ -267,6 +272,7 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
                                 <Button
                                     mode="contained"
                                     onPress={handleSubmit(onSubmit)}
+
                                     style={styles.button}
                                 >
                                     {submitLabel}

@@ -1,7 +1,8 @@
 import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from './firebase';
+
+import axios from 'axios';
+import { db, } from './firebase';
 
 export const deleteItem = async (
     collectionName: string,
@@ -92,7 +93,7 @@ export const updateItem = async (
 
 
 
-import uuid from 'react-native-uuid';
+
 
 /**
  * Uploads an image to Firebase Storage and returns its download URL.
@@ -100,20 +101,33 @@ import uuid from 'react-native-uuid';
  * @param folderName - The folder in Firebase Storage (e.g. 'customer_images').
  * @returns The download URL of the uploaded image.
  */
-export const uploadImageAndGetUrl = async (uri: string, folderName: string = 'uploads') => {
+
+
+export const uploadImageAndGetUrl = async (uri: string) => {
     try {
-        const response = await fetch(uri);
-        const blob = await response.blob();
+        console.log('Image Upload Started');
 
-        const fileName = `${folderName}/${uuid.v4()}.jpg`;
-        const storageRef = ref(storage, fileName);
+        // Convert local URI to Blob or Base64 (Expo has FileSystem and fetch for this)
+        const formData = new FormData();
+        formData.append('file', {
+            uri,
+            type: 'image/jpeg', // or 'image/png'
+            name: 'upload.jpg',
+        } as any);
+        formData.append('upload_preset', 'YOUR_UNSIGNED_UPLOAD_PRESET'); // from Cloudinary settings
 
-        await uploadBytes(storageRef, blob);
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload`;
 
-        const downloadUrl = await getDownloadURL(storageRef);
-        return downloadUrl;
+        const response = await axios.post(cloudinaryUrl, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        console.log('Cloudinary upload response:', response.data);
+
+        return response.data.secure_url;
     } catch (error) {
         console.error('Error uploading image:', error);
         throw error;
     }
 };
+
