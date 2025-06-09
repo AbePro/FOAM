@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
     Alert,
@@ -45,6 +45,12 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
         reset();
         onDismiss();
     };
+
+    useEffect(() => {
+        if (defaultValues?.image) {
+            setImageUri(defaultValues.image);
+        }
+    }, [defaultValues?.image]);
 
     const [imageUri, setImageUri] = useState<string | null>(null);
 
@@ -168,7 +174,7 @@ const CustomersForm: React.FC<CustomersFormProps> = ({
                                             <TextInput
                                                 mode="outlined"
                                                 label="WhatsApp"
-                                                value={value || phoneValue}
+                                                value={value}
                                                 onChangeText={onChange}
                                                 style={styles.input}
                                                 keyboardType="phone-pad"

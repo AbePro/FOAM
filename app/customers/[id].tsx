@@ -1,14 +1,16 @@
 import AppSnackbar from '@/componets/AppSnackbar';
 import CustomersForm from '@/componets/CustomersForm';
 import NotesForm from '@/componets/NotesForm';
+import Constants from 'expo-constants';
 import { useLocalSearchParams } from 'expo-router';
-import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDocs, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ScrollView, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Avatar, Button, Card, Divider, IconButton, MD2Colors, MD3Colors, Text } from 'react-native-paper';
 import { db } from '../../lib/firebase';
 import { createItem, deleteItem, updateItem } from '../../lib/firstoreFunctions';
 import { handleCall, handleEmail, handleWhatsApp } from '../../lib/linkingHelpers';
+const { cloudinaryUploadPreset, cloudinaryCloudName } = Constants.expoConfig?.extra || {};
 
 
 
@@ -65,19 +67,22 @@ const CustomerDeatils = ({ }) => {
     };
 
     useEffect(() => {
-        const fetchCustomer = async () => {
-            const docRef = doc(db, 'customers', id as string);
-            const docSnap = await getDoc(docRef);
+        if (!id) return;
+
+        // Set up real-time listener
+        const docRef = doc(db, 'customers', id as string);
+
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 setCustomer({ id: docSnap.id, ...docSnap.data() });
             } else {
                 console.log('No such customer!');
             }
-        };
+        });
 
-        fetchCustomer();
+        // Cleanup on unmount
+        return () => unsubscribe();
     }, [id]);
-
 
 
     useEffect(() => {
@@ -114,39 +119,46 @@ const CustomerDeatils = ({ }) => {
     return (
         <ScrollView className="flex-1 bg-white p-4">
             <Card>
-                <Card.Content className="items-center">
-                    <Avatar.Image
-                        size={80}
-                        source={
-                            customer.image
-                                ? { uri: customer.image }
-                                : require('../../assets/avatar.png')
-                        }
-                        className="mb-4"
-                    />
-                    <Text className="text-xl font-bold mb-2">{customer.name}</Text>
-                    <Text className="text-gray-500 mb-4">{customer.phone}</Text>
-                    <Text className="text-gray-500 mb-4">{customer.email}</Text>
-                    <IconButton
-                        icon="pencil"
-                        size={24}
-                        onPress={() => setEditCustomerModalVisible(true)}
-                    />
+                <Card.Content className="flex flex-row items-center justify-between gap-2">
+
+                    <View>
+                        <Avatar.Image
+                            size={80}
+                            source={
+                                customer.image
+                                    ? { uri: customer.image }
+                                    : require('../../assets/avatar.png')
+                            }
+                            className="mb-4"
+                        />
+                    </View>
+                    <View>
+                        <Text className="text-xl font-bold mb-2">{customer.name}</Text>
+                        <Text className="text-gray-500 mb-4">{customer.phone} </Text>
+                        <Text className="text-gray-500 mb-4">{customer.email}</Text>
+                    </View>
+                    <View>
+                        <IconButton
+                            icon="pencil"
+                            size={24}
+                            onPress={() => setEditCustomerModalVisible(true)}
+                        />
+                    </View>
 
                 </Card.Content>
             </Card>
 
             {/* Action Buttons */}
             <View className="flex-row justify-around mt-6">
-                <Button icon="phone" mode="contained" onPress={() => handleCall(customer.phone)}>
+                {customer.phone && <Button icon="phone" mode="contained" onPress={() => handleCall(customer.phone)}>
                     Call
-                </Button>
-                <Button icon="whatsapp" mode="contained" onPress={() => handleWhatsApp(customer.whatsapp)}>
+                </Button>}
+                {customer.whatsapp && <Button icon="whatsapp" mode="contained" onPress={() => handleWhatsApp(customer.whatsapp)}>
                     WhatsApp
-                </Button>
-                <Button icon="email" mode="contained" onPress={() => handleEmail(customer.email)}>
+                </Button>}
+                {customer.email && <Button icon="email" mode="contained" onPress={() => handleEmail(customer.email)}>
                     Email
-                </Button>
+                </Button>}
             </View>
             <View className="mt-8">
                 {/* Reminders Section */}
@@ -282,20 +294,60 @@ const CustomerDeatils = ({ }) => {
                 }}
             />
 
+
+
             <CustomersForm
                 visible={editCustomerModalVisible}
                 onDismiss={() => setEditCustomerModalVisible(false)}
                 submitLabel="Save Changes"
                 type="update"
-                defaultValues={customer}
+                defaultValues={customer} // pre-fill with existing data
                 onSubmit={async (data) => {
-                    if (data.name.trim() && customer?.id) {
-                        await updateItem('customers', customer.id, data);
+                    try {
+                        let imageUrl = customer.image || ''; // use existing image if not updated
+
+                        // Check if a new image was uploaded
+                        if (data.image && data.image !== customer.image) {
+                            const formData = new FormData();
+                            formData.append('file', {
+                                uri: data.image,
+                                type: 'image/jpeg', // adjust as needed
+                                name: 'customer_image.jpg',
+                            } as any);
+                            formData.append('upload_preset', cloudinaryUploadPreset);
+
+                            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/image/upload`, {
+                                method: 'POST',
+                                body: formData,
+                            });
+
+                            const result = await response.json();
+
+                            if (result.secure_url) {
+                                imageUrl = result.secure_url;
+
+                            } else {
+                                throw new Error('Image upload failed.');
+                            }
+                        }
+
+                        const dataToSave = {
+                            ...data,
+                            image: imageUrl || null,
+                        };
+
+                        await updateItem('customers', customer.id, dataToSave);
                         setEditCustomerModalVisible(false);
                         showSnackbar('Customer updated');
+                        // onSnapshot handles live updates
+                    } catch (error) {
+                        console.error('Error updating customer:', error);
+                        alert('Failed to update customer. Please try again.');
                     }
                 }}
             />
+
+
 
 
 
